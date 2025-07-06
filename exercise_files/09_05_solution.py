@@ -37,7 +37,7 @@ class Canvas:
         try:
             self._canvas[round(pos[0])][round(pos[1])] = mark
         except Exception as e:
-            raise TerminalScribeException(e)
+            raise TerminalScribeException(str(e))
 
     def clear(self):
         os.system('cls' if os.name == 'nt' else 'clear')

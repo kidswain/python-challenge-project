@@ -45,15 +45,27 @@ class Canvas:
             'scribes': [scribe.toDict() for scribe in self.scribes]
         }
 
+    @staticmethod
     def fromDict(data):
-        canvas = globals()[data.get('classname')](data.get('x'), data.get('y'), scribes=[globals()[scribe.get('classname')].fromDict(scribe) for scribe in data.get('scribes')])
-        canvas._canvas = data.get('canvas')
+        if not isinstance(data, dict):
+            raise TerminalScribeException('Input to fromDict must be a dictionary')
+        canvas_class = globals()[data['classname']]
+        scribes = []
+        for scribe in data['scribes']:
+            scribe_classname = scribe['classname'] if isinstance(scribe, dict) else getattr(scribe, 'classname', None)
+            if not isinstance(scribe_classname, str):
+                raise TerminalScribeException('Scribe classname is missing or invalid')
+            scribe_class = globals()[scribe_classname]
+            scribes.append(scribe_class.fromDict(scribe))
+        canvas = canvas_class(data['x'], data['y'], scribes=scribes)
+        canvas._canvas = data['canvas']
         return canvas
 
     def toFile(self, name):
         with open(name+'.json', 'w') as f:
             f.write(json.dumps(self.toDict()))
 
+    @staticmethod
     def fromFile(name):
         with open(name+'.json', 'r') as f:
             try:
@@ -77,7 +89,7 @@ class Canvas:
         try:
             self._canvas[round(pos[0])][round(pos[1])] = mark
         except Exception as e:
-            raise TerminalScribeException(e)
+            raise TerminalScribeException(str(e))
 
     def clear(self):
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -150,6 +162,7 @@ class TerminalScribe:
             'moves': [[move[0].__name__, move[1]] for move in self.moves]
         }
 
+    @staticmethod
     def fromDict(data):
         scribe = globals()[data.get('classname')](
             color=data.get('color'),
@@ -219,6 +232,7 @@ class PlotScribe(TerminalScribe):
         data['domain'] = self.domain
         return data
 
+    @staticmethod
     def fromDict(data):
         scribe = globals()[data.get('classname')](
             color=data.get('color'),

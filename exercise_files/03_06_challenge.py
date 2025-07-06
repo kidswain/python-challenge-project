@@ -1,3 +1,4 @@
+import math
 import os
 import time
 from termcolor import colored
@@ -23,12 +24,15 @@ class Canvas:
             print(' '.join([col[y] for col in self._canvas]))
 
 class TerminalScribe:
-    def __init__(self, canvas):
+
+    def __init__(self, canvas, direction=0, distance=1):
         self.canvas = canvas
-        self.trail = '.'
-        self.mark = '*'
+        self.trail = "."
+        self.mark = "*"
         self.framerate = 0.05
-        self.pos = [0, 0]
+        self.pos = [0, 0]  # Start at top-left
+        self.direction = direction  # In degrees: 0 = up
+        self.distance = distance  # Integer distance
 
     def up(self):
         pos = [self.pos[0], self.pos[1]-1]
@@ -68,8 +72,6 @@ class TerminalScribe:
             self.up()
             i = i + 1
 
-
-
     def draw(self, pos):
         self.canvas.setPos(self.pos, self.trail)
         self.pos = pos
@@ -77,8 +79,18 @@ class TerminalScribe:
         self.canvas.print()
         time.sleep(self.framerate)
 
-canvas = Canvas(30, 30)
-scribe = TerminalScribe(canvas)
+    def forward(self):
+        radians = math.radians(self.direction)
+        dx = round(math.sin(radians) * self.distance)
+        dy = round(
+            -math.cos(radians) * self.distance
+        )  # Negative because y increases downward
+        new_pos = [self.pos[0] + dx, self.pos[1] + dy]
 
-scribe.drawSquare(20)
+        if not self.canvas.hitsWall(new_pos):
+            self.draw(new_pos)
 
+
+canvas = Canvas(50, 50)
+scribe = TerminalScribe(canvas, direction=135, distance=30)  # Move right 10 units
+scribe.forward()

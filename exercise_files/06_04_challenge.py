@@ -33,6 +33,20 @@ class Canvas:
         for y in range(self._y):
             print(' '.join([col[y] for col in self._canvas]))
 
+    def draw_axes(self):
+        mid_y = self._y // 2
+        mid_x = self._x // 2
+        for x in range(self._x):
+            self._canvas[x][mid_y] = '-'  # X-axis
+        for y in range(self._y):
+            self._canvas[mid_x][y] = '|'  # Y-axis
+        self._canvas[mid_x][mid_y] = '+'  # Origin
+
+    def add_title(self, title):
+        for i, char in enumerate(title):
+            if i < self._x:
+                self._canvas[i][0] = char
+
 class TerminalScribe:
     def __init__(self, canvas):
         self.canvas = canvas
@@ -78,6 +92,18 @@ class TerminalScribe:
                 pos = [self.pos[0] + self.direction[0], self.pos[1] + self.direction[1]]
             self.draw(pos)
 
+    def plotX(self, func, x_range):
+        for x in x_range:
+            y = func(x)
+            if not self.canvas.hitsWall([x, y]):
+                self.draw([x, y])
+
+    def plotXY(self, func, steps=100):
+        for _ in range(steps):
+            new_pos = func(self.pos[0], self.pos[1])
+            if not self.canvas.hitsWall(new_pos):
+                self.draw(new_pos)
+
     def drawSquare(self, size):
         for i in range(size):
             self.right()
@@ -95,10 +121,34 @@ class TerminalScribe:
         self.canvas.print()
         time.sleep(self.framerate)
 
+def sine(x):
+    return 5 * math.sin(x / 4) + 10  # Scaled and shifted to fit canvas
 
-canvas = Canvas(30, 30)
-scribe = TerminalScribe(canvas)
-scribe.setDegrees(150)
-scribe.forward(100)
+def cosine(x):
+    return 5 * math.cos(x / 4) + 10  # Scaled and shifted to fit the canvas
+
+def spiral(x, y):
+    angle = math.atan2(y - 15, x - 15) + 0.2
+    radius = math.hypot(x - 15, y - 15) + 0.5
+    return [15 + radius * math.cos(angle), 15 + radius * math.sin(angle)]
 
 
+canvas = Canvas(60, 60)
+canvas.draw_axes()
+canvas.add_title("Cosine, Sine and Spiral Waves")
+
+scribe1 = TerminalScribe(canvas)
+scribe1.setPosition([0, 15])
+scribe2 = TerminalScribe(canvas)
+scribe2.setPosition([30, 15])
+scribe3 = TerminalScribe(canvas)
+scribe3.setPosition([0, 15])
+
+# Plot sine wave
+scribe1.plotX(sine, range(60))
+
+# Plot spiral
+scribe2.plotXY(spiral, steps=100)
+
+# Plot cosine wave
+scribe3.plotX(cosine, range(60))

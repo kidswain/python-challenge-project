@@ -5,6 +5,7 @@ import math
 import random
 from threading import Thread
 from inspect import getmembers, ismethod
+import json
 
 class TerminalScribeException(Exception):
     def __init__(self, message=''):
@@ -44,8 +45,19 @@ class Canvas:
             'scribes': [scribe.toDict() for scribe in self.scribes]
         }
 
-    def fromDict(data):
-        canvas = globals()[data.get('classname')](data.get('x'), data.get('y'), scribes=[globals()[scribe.get('classname')].fromDict(scribe) for scribe in data.get('scribes')])
+    @classmethod
+    def fromDict(cls, data):
+        canvas_class = globals()[data.get('classname')]
+        scribes_data = data.get('scribes', [])
+        scribes = []
+        for scribe in scribes_data:
+            if isinstance(scribe, dict):
+                classname = scribe.get('classname')
+                if not isinstance(classname, str):
+                    raise TerminalScribeException("Invalid or missing 'classname' in scribe dictionary")
+                scribe_class = globals()[classname]
+                scribes.append(scribe_class.fromDict(scribe))
+        canvas = canvas_class(data.get('x'), data.get('y'), scribes=scribes)
         canvas._canvas = data.get('canvas')
         return canvas
 
@@ -65,7 +77,7 @@ class Canvas:
         try:
             self._canvas[round(pos[0])][round(pos[1])] = mark
         except Exception as e:
-            raise TerminalScribeException(e)
+            raise TerminalScribeException(str(e))
 
     def clear(self):
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -138,6 +150,7 @@ class TerminalScribe:
             'moves': [[move[0].__name__, move[1]] for move in self.moves]
         }
 
+    @staticmethod
     def fromDict(data):
         scribe = globals()[data.get('classname')](
             color=data.get('color'),
@@ -207,6 +220,7 @@ class PlotScribe(TerminalScribe):
         data['domain'] = self.domain
         return data
 
+    @staticmethod
     def fromDict(data):
         scribe = globals()[data.get('classname')](
             color=data.get('color'),
@@ -252,11 +266,19 @@ class RobotScribe(TerminalScribe):
         self.left(size)
         self.up(size)
 
+    def toDict(self):
+        return super().toDict()
+
+    @staticmethod
+    def fromDict(data):
+        return TerminalScribe.fromDict(data)
+
+
 class RandomWalkScribe(TerminalScribe):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.degrees = kwargs.get('degrees', 135)
-    
+
     def _randomizeDegrees(self, _):
         self.degrees = random.randint(self.degrees-10, self.degrees+10)
         self.direction = self.degreesToUnitDirection(self.degrees)
@@ -264,7 +286,7 @@ class RandomWalkScribe(TerminalScribe):
 
     def randomizeDegrees(self):
         self.moves.append((self._randomizeDegrees, []))
-    
+
     def bounce(self, pos, canvas):
         reflection = canvas.getReflection(pos)
         if reflection[0] == -1:
@@ -277,6 +299,23 @@ class RandomWalkScribe(TerminalScribe):
         for i in range(distance):
             self.randomizeDegrees()
             super().forward()
+
+    def toDict(self):
+        return super().toDict()
+
+    @staticmethod
+    def fromDict(data):
+        return TerminalScribe.fromDict(data)
+
+def save_canvas_to_json(canvas, filename):
+    with open(filename, "w") as f:
+        json.dump(canvas.toDict(), f, indent=2)
+
+
+def load_canvas_from_json(filename):
+    with open(filename, "r") as f:
+        data = json.load(f)
+        return Canvas.fromDict(data)
 
 def sine(x):
     return 5*math.sin(x/4) + 15
@@ -303,3 +342,9 @@ robotScribe.drawSquare(20)
 
 canvas = CanvasAxis(40, 40, scribes=[scribe, robotScribe])
 
+# Save canvas to file
+save_canvas_to_json(canvas, "canvas_data.json")
+
+# Load canvas from file
+loaded_canvas = load_canvas_from_json("canvas_data.json")
+loaded_canvas.go()

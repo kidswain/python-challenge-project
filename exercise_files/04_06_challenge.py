@@ -76,9 +76,47 @@ class TerminalScribe:
         self.canvas.print()
         time.sleep(self.framerate)
 
+def run_scribes(canvas, scribe_data):
+    for s_data in scribe_data:
+        scribe = TerminalScribe(canvas)
+        scribe.pos = s_data["start_pos"]
+        scribe.setDegrees(s_data["degrees"])
+        delay = s_data.get("delay", 0.1)
+
+        for instr in s_data["instructions"]:
+            if isinstance(instr, dict):
+                # Support instructions with arguments like {'drawSquare': 5}
+                for command, arg in instr.items():
+                    getattr(scribe, command)(arg)
+            else:
+                getattr(scribe, instr)()
+            time.sleep(delay)
+
+
 canvas = Canvas(30, 30)
-scribe = TerminalScribe(canvas)
-scribe.setDegrees(135)
-for i in range(30):
-    scribe.forward()
+
+instructions = [
+    {
+        "start_pos": [5, 5],
+        "degrees": 0,
+        "instructions": ["forward", "forward", {"drawSquare": 3}],
+        "delay": 0.1,
+    },
+    {
+        "start_pos": [15, 15],
+        "degrees": 90,
+        "instructions": [
+            "forward",
+            "forward",
+            "left",
+            "forward",
+            "right",
+            {"drawSquare": 2},
+        ],
+        "delay": 0.05,
+    },
+    {"start_pos": [25, 25], "degrees": 225, "instructions": ["forward"] * 10},
+]
+
+run_scribes(canvas, instructions)
 
